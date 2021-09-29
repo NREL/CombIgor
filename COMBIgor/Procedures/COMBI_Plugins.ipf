@@ -146,7 +146,7 @@ function COMBI_GivePluginGlobal(sThisPluginName,sGlobal,sValue,sFolder)
 		setdimlabel 1,vPreviousFolders,$sFolder,twGlobals
 	endif
 	//if it existed previously
-	if(Finddimlabel(twGlobals,0,sGlobal)>0)
+	if(Finddimlabel(twGlobals,0,sGlobal)>=0)
 		string sOldValue = twGlobals[%$sGlobal][%$sFolder]
 		twGlobals[%$sGlobal][%$sFolder] = sValue
 		//returns a 1 or 2 depending on previous value 

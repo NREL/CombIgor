@@ -321,14 +321,18 @@ function/S Combi_AddLibrary(sProject,sLibrary,iDim)
 end
 
 //Adding a DataType to any COMBIgorWave, returns label used
-function/S Combi_AddDataType(sProject,sLibrary,sDataType,iDim,[iVDim])
+function/S Combi_AddDataType(sProject,sLibrary,sDataType,iDim,[iVDim,iMDim])
 	string sProject // the COMBIgor wave to add to
 	string sLibrary // Library for adding to (iDIm =1 or 2 only)
 	string sDataType // Data Type to add
 	int iDim //-1 for meta, 0 for Library, 1 for scalar, 2 for vector
-	int iVDim //vector dimension
+	int iVDim //vector dimension (columns for Matrix)
+	int iMDim //layers for column dimension
 	if(ParamIsDefault(iVDim))
 		iVDim =1
+	endif
+	if(ParamIsDefault(iMDim))
+		iMDim =1
 	endif
 	
 	//get users current folder to return to
@@ -371,7 +375,7 @@ function/S Combi_AddDataType(sProject,sLibrary,sDataType,iDim,[iVDim])
 			endfor
 			setdimLabel 0, -1, $"Samples", wThisNew
 		endif	
-	elseif(iDim==2)
+	elseif(iDim==2)//vector
 		Combi_IntoDataFolder(sProject,iDim)
 		NewDataFolder/O/S $sLibrary
 		sAllDataTypes =ReplaceString(",",StringByKey("WAVES", DataFolderDir(2)),";")
@@ -394,6 +398,35 @@ function/S Combi_AddDataType(sProject,sLibrary,sDataType,iDim,[iVDim])
 			if(vOldSize<iVDim)
 				redimension/N=(-1,iVDim) wThisOld
 				wThisOld[][vOldSize,(iVDim-1)] = nan
+			endif
+		endif	
+	elseif(iDim==3)//matrix
+		Combi_IntoDataFolder(sProject,iDim)
+		NewDataFolder/O/S $sLibrary
+		sAllDataTypes =ReplaceString(",",StringByKey("WAVES", DataFolderDir(2)),";")
+		setdatafolder root:
+		if(whichlistItem(sDataType,sAllDataTypes)==-1)//not made
+			sFolder = Combi_IntoDataFolder(sProject,iDim)
+			//how long of vectors?
+			NewDataFolder/O/S $sLibrary
+			Make/N=(iVDim,iMDim,vTotalSamples) $sDataType
+			SetDataFolder $sTheCurrentUserFolder 
+			wave wThisNew = $sFolder+sLibrary+":"+sDataType
+			wThisNew[][][]=nan
+			for(iSample=0;iSample<vTotalSamples;iSample+=1)
+				SetDimLabel 2,iSample,$"Sample_"+num2str(iSample+1),wThisNew
+			endfor
+		else //already exist
+			wave wThisOld = $Combi_DataPath(sProject,iDim)+sLibrary+":"+sDataType
+			int vOldCSize = dimsize(wThisOld,1)
+			int vOldLSize = dimsize(wThisOld,2)
+			if(vOldCSize<iVDim)
+				redimension/N=(iVDim,-1,-1) wThisOld
+				wThisOld[vOldCSize,(iVDim-1)][][]= nan
+			endif
+			if(vOldLSize<iMDim)
+				redimension/N=(-1,iMDim,-1) wThisOld
+				wThisOld[][vOldLSize,(iMDim-1)][]= nan
 			endif
 		endif	
 	endif
@@ -590,7 +623,7 @@ function Combi_GiveLibraryData(vDataIn,sProject,sLibraries,sDataTypes)
 		else
 			for(iLibrary=0;iLibrary<vLibrariesIn;iLibrary+=1)
 				sThisLibrary = stringfromlist(iLibrary,sLibraries) 
-					wMainWave[%$sThisLibrary][%$sThisDataType] = vDataIn
+					wMainWave[%$sThisLibrary][%$replacestring(":",sThisDataType,"_")] = vDataIn
 			endfor
 		endif
 	endfor
@@ -782,3 +815,35 @@ Function Combi_AddNewEntryFromMenu(sType)
 	string sProject = COMBI_ChooseProject()
 	Combi_NewEntry(sProject,sType)
 end
+
+
+// Makes a 1D wave of data for a single sample currently stored in a 2D vector wave.
+// Input - sProject - string, full name of project
+// Input - sSourceDataType - string, name of data type to access
+// Input - sDestWaveName - string, full wave path of desired 1D output wave
+// Input - iSampleNumber - int, sample number (indexed from 0) of data to pull from vector data
+// returns - sDestWaveName – string, if process successful, "" if no such wave exists
+
+Function/S Combi_ExtractASampleFromAVector(sProject,sLibrary,sSourceDataType,iSampleNumber,sDestWaveName)
+    string sProject,sLibrary,sSourceDataType, sDestWaveName
+    int iSampleNumber
+   
+    //get vector wave
+    wave wSourceWave = $"root:COMBIgor:"+sProject+":Data:"+sLibrary+":"+sSourceDataType
+    if(!waveExists(wSourceWave))
+           DoAlert/T="No Such Wave" 0,"Wave: "+sSourceDataType+" does not exist in project: "+sProject+"for library "+sLibrary
+           return ""
+    endIf       
+
+    //make new wave in root folder
+    int vOutputLength = dimSize(wSourceWave,1)//vector length
+    Make/O/N=(vOutputLength) $sDestWaveName
+    wave wDestWave = $sDestWaveName       
+
+    //fill wave with data from sample
+    wDestWave[] = wSourceWave[iSampleNumber][p]     
+
+    //return wave path and name
+    return sDestWaveName
+
+End

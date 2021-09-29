@@ -108,6 +108,8 @@ Menu "COMBIgor", dynamic
 		"Update",/Q, COMBI_Update()
 		"-"
 		"Force compile",/Q, CompileCOMBIgor()
+		"-"
+		"www.COMBIgor.com",/Q, COMBI_GoToWebsite()
 	End
 
 End
@@ -218,4 +220,8 @@ function COMBI_ShowMetaTable()
 	ModifyBrowser setDataFolder="root:COMBIgor:"+sProject
 	ModifyBrowser select="Meta"
 	Combi_SeeMetaTable(sProject)
+end
+
+Function COMBI_GoToWebsite()
+	BrowseURL/Z "http://www.COMBIgor.com"
 end

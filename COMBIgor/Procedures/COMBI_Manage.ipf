@@ -904,7 +904,7 @@ function Combi_CheckForDataType(sProject,sLibrary,sDataType,iDim)
 	string sProject
 	string sLibrary
 	string sDataType
-	int iDim //-3 for any, -2 for all, -1 for meta, 0 for library, 1 for scalar, 2 for vector
+	int iDim //-3 for any, -2 for all, -1 for meta, 0 for library, 1 for scalar, 2 for vector, 3 for matrix
 	int bReturn = 0
 	int bMeta=0, bLibrary=0, bScalar=0, bVector=0, bMatrix=0
 	if(waveexists($Combi_DataPath(sProject,-1)))
@@ -941,7 +941,7 @@ function Combi_CheckForDataType(sProject,sLibrary,sDataType,iDim)
 	endif
 	if(waveexists($Combi_DataPath(sProject,3)+sLibrary+":"+sDataType))	
 		wave wThisMatrixWave = $Combi_DataPath(sProject,3)+sLibrary+":"+sDataType
-		if(dimsize(wThisMatrixWave,0)==Combi_GetGlobalNumber("vTotalSamples",sProject))
+		if(dimsize(wThisMatrixWave,2)==Combi_GetGlobalNumber("vTotalSamples",sProject))
 			if(dimsize(wThisMatrixWave,1)>1)
 				if(dimsize(wThisMatrixWave,2)>1)
 					bMatrix = 1
@@ -1026,7 +1026,7 @@ function Combi_CheckForData(sProject,sLibrary,sDataType,iDim,iSample)
 		if(waveexists($Combi_DataPath(sProject,3)+sLibrary+":"+sDataType))
 			wave wMatrixData = $Combi_DataPath(sProject,3)+sLibrary+":"+sDataType
 			for(iThisSample=iFirstSample;iThisSample<=iLastSample;iThisSample+=1)
-				if(numtype(wMatrixData[iThisSample][0][0])==0)
+				if(numtype(wMatrixData[0][0][iThisSample])==0)
 					bReturn = 1
 				endif
 			endfor
@@ -1282,16 +1282,82 @@ function Combi_Save(sProject,sWindow,sSubFolderList,sFilename,sOption)
 	killpath/Z pExportPath
 end
 
+function/S Combi_AllDataTypes(sProject, sLibrary, sWaveFilter, bRecursive)
+	string sProject, sLibrary, sWaveFilter
+	int bRecursive
+	//variables
+	string sSub1FolderList, sSub2FolderList, sSub3FolderList
+	string sSub1FolderDataTypes, sSub2FolderDataTypes, sSub3FolderDataTypes
+	int iSub1Folder,iSub2Folder, iSub3Folder
+	int iSub1DataType, iSub2DataType, iSub3DataType
+	string sCurrentFolder, sToReturn
+	//into library folder
+	string sTheCurrentUserFolder = GetDataFolder(1) 
+	setdatafolder $"root:COMBIgor:"+sProject+":Data:"+sLibrary
+	//main level
+	string sAllDataTypes = WaveList("*", ";",sWaveFilter)
+	//below main level
+	if(bRecursive==1)
+		//sub1folder
+		sSub1FolderList = ReplaceString(",",StringByKey("FOLDERS", DataFolderDir(1)),";")
+		for(iSub1Folder=0; iSub1Folder<itemsInList(sSub1FolderList); iSub1Folder+=1)
+			sCurrentFolder = stringFromList(iSub1Folder, sSub1FolderList)
+			SetDataFolder $sCurrentFolder 
+			//pull data types from sub1folder
+			sSub1FolderDataTypes = WaveList("*",";",sWaveFilter)
+			// append subfolder name to data types, add to data type list
+			for(iSub1DataType=0; iSub1DataType<itemsInList(sSub1FolderDataTypes); iSub1DataType+=1)
+				sAllDataTypes = addListItem(sCurrentFolder+":"+stringFromList(iSub1DataType, sSub1FolderDataTypes), sAllDataTypes)
+			endFor
+			//sub2folder
+			sSub2FolderList = ReplaceString(",",StringByKey("FOLDERS", DataFolderDir(1)),";")
+			for(iSub2Folder=0; iSub2Folder<itemsInList(sSub2FolderList); iSub2Folder+=1)
+				sCurrentFolder = stringFromList(iSub1Folder, sSub1FolderList)+":"+stringFromList(iSub2Folder, sSub2FolderList)
+				SetDataFolder $stringFromList(iSub2Folder, sSub2FolderList) 
+				//pull data types from sub1folder
+				sSub2FolderDataTypes = WaveList("*",";",sWaveFilter)
+				// append subfolder name to data types, add to data type list
+				for(iSub2DataType=0; iSub2DataType<itemsInList(sSub2FolderDataTypes); iSub2DataType+=1)
+					sAllDataTypes = addListItem(sCurrentFolder+":"+stringFromList(iSub2DataType, sSub2FolderDataTypes), sAllDataTypes)
+				endFor
+				//sub3folder
+				sSub3FolderList = ReplaceString(",",StringByKey("FOLDERS", DataFolderDir(1)),";")
+				for(iSub3Folder=0; iSub3Folder<itemsInList(sSub3FolderList); iSub3Folder+=1)
+					sCurrentFolder = stringFromList(iSub1Folder, sSub1FolderList)+":"+stringFromList(iSub2Folder, sSub2FolderList)+":"+stringFromList(iSub3Folder, sSub3FolderList)
+					SetDataFolder $stringFromList(iSub3Folder, sSub3FolderList) 
+					//pull data types from sub1folder
+					sSub3FolderDataTypes = WaveList("*",";",sWaveFilter)
+					// append subfolder name to data types, add to data type list
+					for(iSub3DataType=0; iSub3DataType<itemsInList(sSub3FolderDataTypes); iSub3DataType+=1)
+						sAllDataTypes = addListItem(sCurrentFolder+":"+stringFromList(iSub3DataType, sSub3FolderDataTypes), sAllDataTypes)
+					endFor
+					//back to main folder
+					SetDataFolder $"root:COMBIgor:"+sProject+":Data:"+sLibrary+":"+stringFromList(iSub1Folder, sSub1FolderList)+":"+stringFromList(iSub2Folder, sSub2FolderList)
+				endFor
+				//back to main folder
+				SetDataFolder $"root:COMBIgor:"+sProject+":Data:"+sLibrary+":"+stringFromList(iSub1Folder, sSub1FolderList)
+			endFor
+			//back to main folder
+			SetDataFolder $"root:COMBIgor:"+sProject+":Data:"+sLibrary+":"
+		endFor
+	endif
+	setdatafolder $sTheCurrentUserFolder
+	return sAllDataTypes
+	
+end
+
 //function to return all label names, if sOption = Libraries or sOption = DataTypes
-//returns all Libraries in LibraryData Table if iDimension=0
-//returns all Libraries in ScalarData Table if iDimension=1
-//returns all Libraries in VectorData Table if iDimension=2
-//returns all Libraries in All three tables if iDimension=-1
-function/S Combi_TableList(sProject,iDimension,sLibraryOfInterest,sOption)
+function/S Combi_TableList(sProject,iDimension,sLibraryOfInterest,sOption,[bRecursive])
     string sProject // project to operate within, "AllCOMBIgor" for all
     variable iDimension // dimensionality of data set, -3 for all, -2 for all numeric, -1 for meta, 0 for Library, 1 for scalar, 2 for vector, 3 for matrix
     string sOption // Libraries, DataTypes, or DataTypeswDim
     string sLibraryOfInterest //Library to return data types for, or "All" for all Libraries
+    int bRecursive // Whether to list waves in subfolders: 1 for yes, 0 for no
+    if(paramIsDefault(bRecursive))
+    	bRecursive = 1
+    endif
+    
+    string sTheCurrentUserFolder = GetDataFolder(1) 
    
     if(strlen(sProject)==0||stringmatch(sProject," "))
        return ""
@@ -1349,10 +1415,13 @@ function/S Combi_TableList(sProject,iDimension,sLibraryOfInterest,sOption)
 
       
        //get all from scalar
-       NewDataFolder/S/O COMBIgor
-       NewDataFolder/S/O $sProject
-       NewDataFolder/S/O Data
+       string sWaveFilter
+       setdatafolder root:
+       setdataFolder COMBIgor
+       setdataFolder $sProject
+       setdatafolder Data
        string sAllLibraries = ReplaceString(",",StringByKey("FOLDERS", DataFolderDir(1)),";")
+       sAllLibraries = Replacestring(";;",sAllLibraries,";")
        setdatafolder root:
        if(stringmatch(sOption,"Libraries"))
            sScalar += sAllLibraries+";"
@@ -1361,12 +1430,8 @@ function/S Combi_TableList(sProject,iDimension,sLibraryOfInterest,sOption)
                sAllLibraries = sLibraryOfInterest
            endif
            for(iLibrary=0;iLibrary<itemsinlist(sAllLibraries);iLibrary+=1)
-               NewDataFolder/S/O COMBIgor
-               NewDataFolder/S/O $sProject
-               NewDataFolder/S/O Data
-               NewDataFolder/S/O $stringfromlist(iLibrary,sAllLibraries)
-               sAllDataTypes = WaveList("*", ";", "DIMS:1,MAXROWS:"+Combi_GetGlobalString("vTotalSamples",sProject)+",MINROWS:"+Combi_GetGlobalString("vTotalSamples",sProject))
-               setdatafolder root:
+               sWaveFilter = "DIMS:1,MAXROWS:"+Combi_GetGlobalString("vTotalSamples",sProject)+",MINROWS:"+Combi_GetGlobalString("vTotalSamples",sProject)
+               sAllDataTypes = Combi_AllDataTypes(sProject, stringfromlist(iLibrary,sAllLibraries), sWaveFilter, bRecursive)
                for(iDataType=0;iDataType<itemsinlist(sAllDataTypes);iDataType+=1)
                    if(whichlistitem(stringfromlist(iDataType,sAllDataTypes),sScalar)==-1)
                       sScalar = AddListItem(stringfromlist(iDataType,sAllDataTypes),sScalar,";",Inf)
@@ -1383,14 +1448,10 @@ function/S Combi_TableList(sProject,iDimension,sLibraryOfInterest,sOption)
                sAllLibraries = sLibraryOfInterest
            endif
            for(iLibrary=0;iLibrary<itemsinlist(sAllLibraries);iLibrary+=1)
-               NewDataFolder/S/O COMBIgor
-               NewDataFolder/S/O $sProject
-               NewDataFolder/S/O Data
-               NewDataFolder/S/O $stringfromlist(iLibrary,sAllLibraries)
-               sAllDataTypes = WaveList("*", ";", "DIMS:2,MAXROWS:"+Combi_GetGlobalString("vTotalSamples",sProject)+",MINROWS:"+Combi_GetGlobalString("vTotalSamples",sProject)+",MINCOLS:2")
-               setdatafolder root:
+           		sWaveFilter = "DIMS:2,MAXROWS:"+Combi_GetGlobalString("vTotalSamples",sProject)+",MINROWS:"+Combi_GetGlobalString("vTotalSamples",sProject)+",MINCOLS:2"
+               sAllDataTypes = Combi_AllDataTypes(sProject, stringfromlist(iLibrary,sAllLibraries), sWaveFilter, bRecursive)
                for(iDataType=0;iDataType<itemsinlist(sAllDataTypes);iDataType+=1)
-                   if(whichlistitem(stringfromlist(iDataType,sAllDataTypes),sVector)==-1)
+                  if(whichlistitem(stringfromlist(iDataType,sAllDataTypes),sVector)==-1)
                       sVector = AddListItem(stringfromlist(iDataType,sAllDataTypes),sVector,";",Inf)
                   endif
                endfor
@@ -1400,12 +1461,8 @@ function/S Combi_TableList(sProject,iDimension,sLibraryOfInterest,sOption)
                sAllLibraries = sLibraryOfInterest
            endif
            for(iLibrary=0;iLibrary<itemsinlist(sAllLibraries);iLibrary+=1)
-               NewDataFolder/S/O COMBIgor
-               NewDataFolder/S/O $sProject
-               NewDataFolder/S/O Data
-               NewDataFolder/S/O $stringfromlist(iLibrary,sAllLibraries)
-               sAllDataTypes = WaveList("*", ";", "DIMS:2,MAXROWS:"+Combi_GetGlobalString("vTotalSamples",sProject)+",MINROWS:"+Combi_GetGlobalString("vTotalSamples",sProject)+",MINCOLS:2")
-               setdatafolder root:
+               sWaveFilter = "DIMS:2,MAXROWS:"+Combi_GetGlobalString("vTotalSamples",sProject)+",MINROWS:"+Combi_GetGlobalString("vTotalSamples",sProject)+",MINCOLS:2"
+               sAllDataTypes = Combi_AllDataTypes(sProject, stringfromlist(iLibrary,sAllLibraries), sWaveFilter, bRecursive)
                for(iDataType=0;iDataType<itemsinlist(sAllDataTypes);iDataType+=1)
                   wave wVectorTest = $COMBI_DataPath(sProject, 2) + stringfromlist(iLibrary,sAllLibraries) + ":" + stringfromlist(iDataType, sAllDataTypes)
                   if(whichlistitem(stringfromlist(iDataType, sAllDataTypes), sVector)==-1 && strlen(getDimLabel(wVectorTest,1,0)) != 0)
@@ -1423,12 +1480,8 @@ function/S Combi_TableList(sProject,iDimension,sLibraryOfInterest,sOption)
                    sAllLibraries = sLibraryOfInterest
                endif
            for(iLibrary=0;iLibrary<itemsinlist(sAllLibraries);iLibrary+=1)
-               NewDataFolder/S/O COMBIgor
-               NewDataFolder/S/O $sProject
-               NewDataFolder/S/O Data
-               NewDataFolder/S/O $stringfromlist(iLibrary,sAllLibraries)
-               sAllDataTypes = WaveList("*", ";", "DIMS:3,MAXROWS:"+Combi_GetGlobalString("vTotalSamples",sProject)+",MINROWS:"+Combi_GetGlobalString("vTotalSamples",sProject))
-               setdatafolder root:
+           		sWaveFilter = "DIMS:3,MAXLAYERS:"+Combi_GetGlobalString("vTotalSamples",sProject)+",MINLAYERS:"+Combi_GetGlobalString("vTotalSamples",sProject)
+               sAllDataTypes = Combi_AllDataTypes(sProject, stringfromlist(iLibrary,sAllLibraries), sWaveFilter, bRecursive)
                for(iDataType=0;iDataType<itemsinlist(sAllDataTypes);iDataType+=1)
                    if(whichlistitem(stringfromlist(iDataType,sAllDataTypes),sMatrix)==-1)
                       sMatrix = AddListItem(stringfromlist(iDataType,sAllDataTypes),sMatrix,";",Inf)
@@ -1463,6 +1516,9 @@ function/S Combi_TableList(sProject,iDimension,sLibraryOfInterest,sOption)
    
     sFullList = sortList(sFullList,";",32)
     sFullListAll = sortList(sFullListAll,";",32)
+    
+    setdatafolder root:
+    setdatafolder $sTheCurrentUserFolder
    
     //return proper list
     if(iDimension==-3)

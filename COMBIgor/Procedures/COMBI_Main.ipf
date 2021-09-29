@@ -11,7 +11,7 @@
 // Description of functions within:
 // COMBI : Initialize COMBIgor
 
-Static StrConstant ksCOMBIgorVersion = "2.4"
+Static StrConstant ksCOMBIgorVersion = "2"
 
 //-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 //---------------------------------------------Functions Below  ------------------------------------------------------------------------------------------------------------------------------------------------
@@ -365,8 +365,8 @@ function COMBI_Update()
 		endif
 		//go from 2.4 to 2.5
 		if(stringmatch(sTheCurrentVersion,"2.4"))
-			//sTheCurrentVersion = "2.5"
-			//Print "Updated to COMBIgor 2.5"
+			sTheCurrentVersion = "2.5"
+			Print "Updated to COMBIgor 2.5"
 		endif
 		//go from 2.5...
 	endif
