@@ -889,34 +889,36 @@ Function VectorPeakFit_PeakFit(sProject,sLibrary,sDataX,sDataY,sFirstSample,sLas
 end
 
 Function GaussianPeak(wCoef,x) : FitFunc
-	Wave wCoef//AMP,POS,FWHM,BKG
+	Wave wCoef//AMP,POS,HWHM,BKG
 	Variable x
-	return wCoef[0]*exp(-(((x-wCoef[1])^2)/(2*wCoef[2]^2)))+wCoef[3]
+	return wCoef[0]*Exp(-4*ln(2)*((x-wCoef[1])/(2*wCoef[2]))^2)+wCoef[3]
+	//return wCoef[0]*exp(-Ln(2)*(((x-wCoef[1])^2)/((wCoef[2])^2)))+wCoef[3]
 End
 
 Function LorentzianPeak(wCoef,x) : FitFunc
-	Wave wCoef//AMP,POS,FWHM,BKG
+	Wave wCoef//AMP,POS,HWHM,BKG
 	Variable x
 	return (wCoef[0]/(1+((x-wCoef[1])/wCoef[2])^2))+wCoef[3]
 End
 
 Function PseudoVoigtPeak(wCoef,x) : FitFunc
-	Wave wCoef//AMP,POS,FWHM,BKG,FracGaus
+	Wave wCoef//AMP,POS,HWHM,BKG,FracGaus
 	Variable x
-	return ((wCoef[0]*exp(-(((x-wCoef[1])^2)/(2*wCoef[2]^2))))*(wCoef[4]))+((1-wCoef[4])*(wCoef[0]/(1+((x-wCoef[1])/wCoef[2])^2)))+wCoef[3]
+	return (wCoef[0]*Exp(-4*ln(2)*((x-wCoef[1])/(2*wCoef[2]))^2))*(wCoef[4]) + ((1-wCoef[4])*(wCoef[0]/(1+((x-wCoef[1])/wCoef[2])^2))) + wCoef[3]
+	//return ((wCoef[0]*exp(-(((x-wCoef[1])^2)/(2*wCoef[2]^2))))*(wCoef[4]))+((1-wCoef[4])*(wCoef[0]/(1+((x-wCoef[1])/wCoef[2])^2)))+wCoef[3]
 End
 
 Function/S PrintGaussianPeak(wCoef)
-	Wave wCoef//AMP,POS,FWHM,BKG
-	return num2str(wCoef[0])+"*exp(-(((x-"+num2str(wCoef[1])+")^2)/(2*"+num2str(wCoef[2])+"^2)))+"+num2str(wCoef[3])
+	Wave wCoef//AMP,POS,HWHM,BKG
+	return num2str(wCoef[0])+"*exp(-ln(2)*(((x-"+num2str(wCoef[1])+")^2)/(2*"+num2str(wCoef[2])+"^2)))+"+num2str(wCoef[3])
 End
 
 Function/S PrintLorentzianPeak(wCoef)
-	Wave wCoef//AMP,POS,FWHM,BKG
+	Wave wCoef//AMP,POS,HWHM,BKG
 	return "("+num2str(wCoef[0])+"/(1+((x-"+num2str(wCoef[1])+")/"+num2str(wCoef[2])+")^2))+"+num2str(wCoef[3])
 End
 
 Function/S PrintPseudoVoigtPeak(wCoef)
-	Wave wCoef//AMP,POS,FWHM,BKG,FracGaus
+	Wave wCoef//AMP,POS,HWHM,BKG,FracGaus
 	return "(("+num2str(wCoef[0])+"*exp(-(((x-"+num2str(wCoef[1])+")^2)/(2*"+num2str(wCoef[2])+"^2))))*("+num2str(wCoef[4])+"))+((1-"+num2str(wCoef[4])+")*("+num2str(wCoef[0])+"/(1+((x-"+num2str(wCoef[1])+")/"+num2str(wCoef[2])+")^2)))+"+num2str(wCoef[3])
 End

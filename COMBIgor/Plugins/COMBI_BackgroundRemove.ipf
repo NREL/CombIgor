@@ -423,7 +423,7 @@ Function BackgroundRemove_MakeBKG(ctrlName) : ButtonControl
 	else
 		sWaveName = sBKG
 	endif
-	variable vSplineValue = 0.75
+	variable vSplineValue = 0.04
 	prompt sWaveName, "Name for newly made background:"
 	prompt vSplineValue, "Spline Smoothing Factor (>=0)"
 	DoPrompt/HELP="This is the name assigned to this background scan and the smoothing factor." "Make background", sWaveName, vSplineValue
