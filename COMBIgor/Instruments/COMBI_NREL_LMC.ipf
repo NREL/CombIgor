@@ -292,6 +292,7 @@ function NREL_LMC_Load()
 		sThisResult = NREL_LMC_FindEntry(wJSONText,"material")
 		int iMaterial
 		int iSubstrateCount
+		int iParamLocation
 		if(itemsinList(sThisResult)>1)
 			for(iMaterial=0;iMaterial<itemsinList(sThisResult);iMaterial+=1)
 				iThisIndex = str2num(stringfromlist(iMaterial,sThisResult))
@@ -299,12 +300,41 @@ function NREL_LMC_Load()
 					if(stringmatch("COMBI3",sChamber))
 						COMBI_GiveMeta(sProject,"Target_"+wJSONText[iThisIndex+3],sLibraryName,wJSONText[iThisIndex+1],-1)
 					else
-						COMBI_GiveMeta(sProject,"Target_"+wJSONText[iThisIndex+3],sLibraryName,wJSONText[iThisIndex+1],-1)
-						COMBI_GiveMeta(sProject,"Target_"+wJSONText[iThisIndex+3]+"_SN",sLibraryName,wJSONText[iThisIndex+5],-1)
-						COMBI_GiveMeta(sProject,"Target_"+wJSONText[iThisIndex+3]+"_Power",sLibraryName,wJSONText[iThisIndex+7],-1)
-						COMBI_GiveLibraryData(str2num(wJSONText[iThisIndex+9]),sProject,sLibraryName,wJSONText[iThisIndex+1]+"_FP")
-						COMBI_GiveLibraryData(str2num(wJSONText[iThisIndex+11]),sProject,sLibraryName,wJSONText[iThisIndex+1]+"_RP")
-						COMBI_GiveLibraryData(str2num(wJSONText[iThisIndex+13]),sProject,sLibraryName,wJSONText[iThisIndex+1]+"_Volts")
+						//Target Material
+						string sThisMaterial = wJSONText[iThisIndex+1]
+						//Target position
+						iParamLocation = NREL_LMC_FindTargetParam(wJSONText,"position",sThisMaterial)
+						if(iParamLocation!=-1)
+							COMBI_GiveMeta(sProject,sThisMaterial+"_Position",sLibraryName,wJSONText[iParamLocation+1],-1)
+						endif
+						//Target power supply
+						iParamLocation = NREL_LMC_FindTargetParam(wJSONText,"supply",sThisMaterial)
+						if(iParamLocation!=-1)
+							COMBI_GiveMeta(sProject,sThisMaterial+"_Supply",sLibraryName,wJSONText[iParamLocation+1],-1)
+						endif
+						//Target Serial Number
+						iParamLocation = NREL_LMC_FindTargetParam(wJSONText,"sn",sThisMaterial)
+						if(iParamLocation!=-1)
+							COMBI_GiveMeta(sProject,sThisMaterial+"_SN",sLibraryName,wJSONText[iParamLocation+1],-1)
+						endif
+
+						//Target FP
+						iParamLocation = NREL_LMC_FindTargetParam(wJSONText,"fwd_pwr",sThisMaterial)
+						if(iParamLocation!=-1)
+							COMBI_GiveLibraryData(str2num(wJSONText[iParamLocation+1]),sProject,sLibraryName,sThisMaterial+"_FP")
+						endif
+						//Target RP
+						iParamLocation = NREL_LMC_FindTargetParam(wJSONText,"refl_pwr",sThisMaterial)
+						if(iParamLocation!=-1)
+							COMBI_GiveLibraryData(str2num(wJSONText[iParamLocation+1]),sProject,sLibraryName,sThisMaterial+"_RP")
+						endif
+						//Target Volts
+						iParamLocation = NREL_LMC_FindTargetParam(wJSONText,"volts",sThisMaterial)
+						if(iParamLocation!=-1)
+							COMBI_GiveLibraryData(str2num(wJSONText[iParamLocation+1]),sProject,sLibraryName,sThisMaterial+"_Volts")
+						endif
+						
+					
 					endif
 				elseif(iThisIndex>iSubstrates&&iThisIndex<iBias) //single sustrates
 					COMBI_GiveMeta(sProject,"Substrate",sLibraryName,wJSONText[iThisIndex+1],-1)					
@@ -380,4 +410,21 @@ function/S NREL_LMC_FindEntry(wTextWave,sSearchString)
 		endif
 	endfor
 	return sHits
+end
+
+function NREL_LMC_FindTargetParam(wTextWave,sSearchString,sTarget)
+	wave/T wTextWave 
+	string sSearchString,sTarget
+	int iString
+	string sHits = ""
+	int iTargetStart = str2num(NREL_LMC_FindEntry(wTextWave,sTarget))
+	for(iString=iTargetStart;iString<dimsize(wTextWave,0);iString+=1)
+		if(stringmatch(wTextWave[iString],sSearchString))
+			return iString
+		endif
+		if(stringmatch(wTextWave[iString],"material"))
+			return -1
+		endif
+	endfor
+	
 end

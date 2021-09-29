@@ -1155,7 +1155,8 @@ function Dektak8_ScanProcessing(ctrlName) : ButtonControl
 		wTempY[] = wProcessData[iScan][1][p]
 		//smooth
 		if(vSmoothFactor>0)
-			Smooth/M=(0.0001)/R=(nan) vSmoothFactor, wTempY
+			Smooth/M=(0.01)/R=(nan) vSmoothFactor, wTempY
+			
 		endif
 		//remove curvature
 		if(vCurvatureRemovalOrder==0)
@@ -1493,19 +1494,19 @@ function DekTak8_WriteMask(iThisScan,iThisFeature,sStartStop,vScanLength,vDataLe
 	int iWindowMid = floor((iWindowStart+iWindowEnd)/2)
 	int iFilm1Start,iFilm1End ,iFilm2Start,iFilm2End,iFeature1Start,iFeature1End,iFeature2Start,iFeature2End
 	if(stringmatch(sFocus2Edit,"Film"))
-		iFilm1Start = iWindowMid - iHalfFilm
-		iFilm1End = iWindowMid + iHalfFilm
-		iFeature1Start = iWindowStart 
-		iFeature1End = iWindowStart + iHalfSub
-		iFeature2Start = iWindowEnd - iHalfSub
-		iFeature2End = iWindowEnd
+		iFilm1Start = iWindowMid - iHalfFilm + iOffset
+		iFilm1End = iWindowMid + iHalfFilm + iOffset
+		iFeature1Start = iWindowStart  + iOffset
+		iFeature1End = iWindowStart + iHalfSub + iOffset
+		iFeature2Start = iWindowEnd - iHalfSub + iOffset
+		iFeature2End = iWindowEnd + iOffset
 	elseif(stringmatch(sFocus2Edit,"Sub"))
-		iFilm1Start = iWindowStart 
-		iFilm1End = iWindowStart + iHalfFilm
-		iFilm2Start = iWindowEnd - iHalfFilm
-		iFilm2End = iWindowEnd 
-		iFeature1Start = iWindowMid - iHalfSub
-		iFeature1End = iWindowMid + iHalfSub
+		iFilm1Start = iWindowStart  + iOffset
+		iFilm1End = iWindowStart + iHalfFilm + iOffset
+		iFilm2Start = iWindowEnd - iHalfFilm + iOffset
+		iFilm2End = iWindowEnd  + iOffset
+		iFeature1Start = iWindowMid - iHalfSub + iOffset
+		iFeature1End = iWindowMid + iHalfSub + iOffset
 	endif
 	
 	//clear this region
