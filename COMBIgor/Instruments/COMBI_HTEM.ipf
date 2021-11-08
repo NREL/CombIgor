@@ -692,7 +692,7 @@ Static Function/S AddLibInfoToLibDF2(strLibID)
 	sAPI_Return = fetchurl(sAPI_URL)
 
 	SetDataFolder dfrTmpDF
-		JSONSimple /Q /Z /MAXT=100 sAPI_Return
+		JSONSimple /Q /Z /MAXT=1000 sAPI_Return
 		Wave wTokenType = W_TokenType
 		Wave wTokenSize = W_TokenSize
 		Wave wTokenParent = W_TokenParent

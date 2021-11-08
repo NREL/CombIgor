@@ -102,7 +102,8 @@ function COMBIDisplay()
 	
 	if(Stringmatch(COMBIDisplay_GetString("sProject","COMBIgor"),"NAG"))
 		vProject = 0
-		//make all needed globals in global display wave
+		//make all needed globals in global display wave bLockLibrary
+		COMBIDisplay_Global("bLibraryLock","0","COMBIgor")
 		COMBIDisplay_Global("vHMin","Auto","COMBIgor")
 		COMBIDisplay_Global("vHMax","Auto","COMBIgor")
 		COMBIDisplay_Global("vVMin","Auto","COMBIgor")
@@ -346,6 +347,7 @@ function COMBIDisplay()
 		SetDrawEnv textxjust = 2;SetDrawEnv save
 		DrawText 130,vYValue-2, "Library Name:"
 		SetDrawEnv textxjust = 1;SetDrawEnv save
+		CheckBox bLibraryLock,pos={20,vYValue-10},size={100,20},title="",value=COMBIDisplay_GetNumber("bLibraryLock","COMBIgor"),proc=COMBI_UpdateGlobalBool,fSize=12
 		int iLibraryH = WhichListItem(COMBIDisplay_GetString("sLibraryH","COMBIgor"),COMBIDisplay_LibraryList("H"))+1
 		int iLibraryV = WhichListItem(COMBIDisplay_GetString("sLibraryV","COMBIgor"),COMBIDisplay_LibraryList("V"))+1
 		int iLibraryC = WhichListItem(COMBIDisplay_GetString("sLibraryC","COMBIgor"),COMBIDisplay_LibraryList("C"))+1
@@ -698,6 +700,7 @@ Function COMBIDisplay_UpdateGlobal(ctrlName,popNum,popStr) : PopupMenuControl
 	variable vCDim = COMBIDisplay_GetNumber("vCDim","COMBIgor")
 	variable vSDim = COMBIDisplay_GetNumber("vSDim","COMBIgor")
 	
+
 	//Combi_CheckForDataType(sProject,sLibraryH,sHError,vHDim)
 	
 	if(stringmatch("sHDim",ctrlName))
@@ -726,6 +729,21 @@ Function COMBIDisplay_UpdateGlobal(ctrlName,popNum,popStr) : PopupMenuControl
 			COMBIDisplay_Global("sLibraryS","","COMBIgor")
 		endif
 		COMBIDisplay_Global("sSData","","COMBIgor") 
+	elseif(stringmatch(ctrlName,"sLibrary*"))
+		if(COMBIDisplay_GetNumber("bLibraryLock","COMBIgor")==1)
+			if(strlen(COMBIDisplay_GetString("sHDim","COMBIgor"))>0)
+				COMBIDisplay_Global("sLibraryH",popStr,"COMBIgor")
+			endif
+			if(strlen(COMBIDisplay_GetString("sVDim","COMBIgor"))>0)
+				COMBIDisplay_Global("sLibraryV",popStr,"COMBIgor")
+			endif
+			if(strlen(COMBIDisplay_GetString("sCDim","COMBIgor"))>0)
+				COMBIDisplay_Global("sLibraryC",popStr,"COMBIgor")
+			endif
+			if(strlen(COMBIDisplay_GetString("sSDim","COMBIgor"))>0)
+				COMBIDisplay_Global("sLibraryS",popStr,"COMBIgor")
+			endif
+		endif
 	elseif(stringmatch("sLibraryH",ctrlName))
 		if(Combi_CheckForDataType(sProject,sLibraryH,sHData,vHDim)==0)
 			COMBIDisplay_Global("sHData","","COMBIgor")
@@ -800,7 +818,7 @@ function/S COMBIDisplay_DataList(sAxis)
 	else
 		sDataTypeFilter = "*"+sDataTypeFilter+"*"
 	endif
-	return " ;"+ListMatch(COMBI_TableList(sProject,vDim,sLibrary,"DataTypes"), sDataTypeFilter)
+	return " ;"+ListMatch(COMBI_TableList(sProject,vDim,sLibrary,"DataTypes", bRecursive=1), sDataTypeFilter)
 end
 
 //function to return drop downs of Librarys for panel
@@ -1127,7 +1145,7 @@ function COMBIDisplay_Map(sProject,sLibrarySee,sMCData,sCScale,sColorTheme,sMSDa
 	endif
 	if((bColor==1)&&(stringmatch(sMStyle,"Contours*")||stringmatch(sMStyle,"Both*")))//contours
 		AppendXYZContour/W=$sWindowName wColor vs {wHWave,wVWave}
-		ModifyContour/W=$sWindowName $sMCData ctabLines={*,*,$sColorTheme,0}
+		ModifyContour/W=$sWindowName $sMCData ctabLines={vMinC,vMaxC,$sColorTheme,0}
 		if(stringmatch(sMStyle,"Both*"))
 			sMarkerTrace = "'"+sMCData+"=xymarkers'"
 			ModifyContour/W=$sWindowName $sMCData xymarkers=1,labels=0
@@ -1229,7 +1247,7 @@ function COMBIDisplay_Map(sProject,sLibrarySee,sMCData,sCScale,sColorTheme,sMSDa
 			vSMinS = vSMax
 			vSMaxS = vSMin
 		endif
-		ModifyGraph/W=$sWindowName zmrkSize($sMarkerTrace)={wSize,vSMinS,vSMaxS,1,10}
+		ModifyGraph/W=$sWindowName zmrkSize($sMarkerTrace)={wSize,vSMinS,vSMaxS,3,10}
 		SetDrawEnv gstart, gname=SizeScale 
 		SetDrawEnv xcoord= abs,ycoord= abs ,save
 		SetDrawEnv linethick= 0.50, save
@@ -1405,21 +1423,220 @@ function COMBIDisplay_Map(sProject,sLibrarySee,sMCData,sCScale,sColorTheme,sMSDa
 
 end
 
+//this function looks ofr errors in the inputs for the plotting function
 function COMBIDisplay_CheckPlotInputs(sProject,sAction,sHDim,sLibraryH,sHData,sHError,sHScale,sHMin,sHMax,sHLocation,sVDim,sLibraryV,sVData,sVError,sVScale,sVMin,sVMax,sVLocation,sCDim,sLibraryC,sCData,sCScale,sCMin,sCMax,sColorTheme,sSDim,sLibraryS,sSData,sSScale,sSMin,sSMax,vMode,vMarker,sSampleMin,sSampleMax,sGA1Min,sGA1Max,sGA2Min,sGA2Max)
 	string sProject,sAction,sHDim,sLibraryH,sHData,sHError,sHScale,sHMin,sHMax,sHLocation,sVDim,sLibraryV,sVData,sVError,sVScale,sVMin,sVMax,sVLocation,sCDim,sLibraryC,sCData,sCScale,sCMin,sCMax,sColorTheme,sSDim,sLibraryS,sSData,sSScale,sSMin,sSMax,sSampleMin,sSampleMax,sGA1Min,sGA1Max,sGA2Min,sGA2Max
 	variable vMode,vMarker
+	string sdatatypelist
+	
+	string sAllLibraries = Combi_TableList(sProject,-3,"All","Libraries")
+	string sAllData = Combi_TableList(sProject,-3,"All","DataTypes")
+	
 	//check for project
+	if(strlen(sProject)==0)
+		DoAlert/T="Bad Inputs for sProject",0,"No project given!"
+		Return 0
+	endif
+	
 	//check for Action
-	//check for H Dim
-	//check for V dim
-	//check for C dim
-	//check for S dim
+	if(whichListItem(sAction,"AppendPlot;NewPlot")==-1)
+		DoAlert/T="Bad Inputs for sAction",0,"only NewPlot and AppendPlot are known actions"
+		Return 0
+	endif
+	
+	//Horizontal data : sHDim,sLibraryH,sHData,sHError,sHScale,sHMin,sHMax,sHLocation,
+	if(whichListItem(sHDim,"Library;Scalar;Vector")==-1)
+		DoAlert/T="Bad Inputs for sHDim",0,"only Library, Scalar, or Vector are known dimensions"
+		Return 0
+	endif
+	if(whichListItem(sLibraryH,sAllLibraries)==-1)
+		DoAlert/T="Bad Inputs for sLibraryH",0,sLibraryH+" isn't a known library in the "+sProject+" project."
+		Return 0
+	endif
+	sdatatypelist = Combi_TableList(sProject,-3,sLibraryH,"DataTypes")
+	if(whichListItem(sHData,sdatatypelist)<1)		
+		DoAlert/T="Bad Inputs for sHData",0,sHData+" isn't a known datatype in the "+sProject+" project for library "+sLibraryH+"."
+		Return 0
+	endif
+	if(whichListItem(sHScale,"Linear;-Linear;Log;-Log")==-1)
+		DoAlert/T="Bad Inputs for sHScale",0,"Linear,-Linear,Log,-Log are the only known scale types for the horizontal axis; "+sHScale+" is not known."
+		Return 0
+	endif
+	if(numtype(str2num(sHMin))!=0)
+		if(whichListItem(sHMin,"*;Auto")==-1)
+			DoAlert/T="Bad Inputs for sHMin",0,"Auto,*, or a number are needed for the horizontal min; "+sHMin+" is not a min value."
+			Return 0
+		endif
+	endif
+	if(numtype(str2num(sHMax))!=0)
+		if(whichListItem(sHMax,"*;Auto")==-1)
+			DoAlert/T="Bad Inputs for sHMax",0,"Auto,*, or a number are needed for the horizontal min; "+sHMax+" is not a min value."
+			Return 0
+		endif
+	endif
+	if(whichListItem(sHLocation,"Top;Bottom")==-1)
+		DoAlert/T="Bad Inputs for sHLocation",0,"only Top, or Bottom are known values for horizontal axis location"
+		Return 0
+	endif
+	
+	
+	//Vertical data : sVDim,sLibraryV,sVData,sVError,sVScale,sVMin,sVMax,sVLocation
+	if(whichListItem(sVDim,"Library;Scalar;Vector")==-1)
+		DoAlert/T="Bad Inputs for sVDim",0,"only Library, Scalar, or Vector are known dimensions"
+		Return 0
+	endif
+	if(whichListItem(sLibraryV,sAllLibraries)==-1)
+		DoAlert/T="Bad Inputs for sLibraryV",0,sLibraryV+" isn't a known library in the "+sProject+" project."
+		Return 0
+	endif
+	sdatatypelist = Combi_TableList(sProject,-3,sLibraryV,"DataTypes")
+	if(whichListItem(sVData,sdatatypelist)<1)
+		DoAlert/T="Bad Inputs for sVData",0,sVData+" isn't a known datatype in the "+sProject+" project for library "+sLibraryV+"."
+		Return 0
+	endif
+	if(whichListItem(sVScale,"Linear;-Linear;Log;-Log")==-1)
+		DoAlert/T="Bad Inputs for sVScale",0,"Linear,-Linear,Log,-Log are the only known scale types for the horizontal axis; "+sVScale+" is not known."
+		Return 0
+	endif
+	if(numtype(str2num(sVMin))!=0)
+		if(whichListItem(sVMin,"*;Auto")==-1)
+			DoAlert/T="Bad Inputs for sVMin",0,"Auto,*, or a number are needed for the horizontal min; "+sVMin+" is not a min value."
+			Return 0
+		endif
+	endif
+	if(numtype(str2num(sVMax))!=0)
+		if(whichListItem(sVMax,"*;Auto")==-1)
+			DoAlert/T="Bad Inputs for sVMax",0,"Auto,*, or a number are needed for the horizontal min; "+sVMax+" is not a min value."
+			Return 0
+		endif
+	endif
+	if(whichListItem(sVLocation,"Left;Right")==-1)
+		DoAlert/T="Bad Inputs for sVLocation",0,"only Top, or Bottom are known values for horizontal axis location"
+		Return 0
+	endif
+	
+	//Color data : sCDim,sLibraryC,sCData,sCScale,sCMin,sCMax,sColorTheme
+	if(whichListItem(sCDim,"Library;Scalar;Vector;; ;")==-1)
+		DoAlert/T="Bad Inputs for sCDim",0,"only Library, Scalar, or Vector are known dimensions"
+		Return 0
+	endif
+	if(!(stringmatch(sCDim," ")||stringmatch(sCDim,"")))
+		if(whichListItem(sLibraryC,sAllLibraries)==-1)
+			DoAlert/T="Bad Inputs for sCDim",0,sLibraryC+" isn't a known library in the "+sProject+" project."
+			Return 0
+		endif
+		sdatatypelist = Combi_TableList(sProject,-3,sLibraryC,"DataTypes")
+		if(whichListItem(sCData,sdatatypelist)<1)
+			DoAlert/T="Bad Inputs for sCData",0,sCData+" isn't a known datatype in the "+sProject+" project for library "+sLibraryC+"."
+			Return 0
+		endif
+		
+		if(whichListItem(sCScale,"Linear;-Linear;Log;-Log")==-1)
+			DoAlert/T="Bad Inputs for sCScale",0,"Linear,-Linear,Log,-Log are the only known scale types for the horizontal axis; "+sCScale+" is not known."
+			Return 0
+		endif
+		if(numtype(str2num(sCMin))!=0)
+			if(whichListItem(sCMin,"*;Auto")==-1)
+				DoAlert/T="Bad Inputs for sCMin",0,"Auto,*, or a number are needed for the horizontal min; "+sCMin+" is not a min value."
+				Return 0
+			endif
+		endif
+		if(numtype(str2num(sCMax))!=0)
+			if(whichListItem(sCMax,"*;Auto")==-1)
+				DoAlert/T="Bad Inputs for sCMax",0,"Auto,*, or a number are needed for the horizontal min; "+sCMax+" is not a min value."
+				Return 0
+			endif
+		endif
+		if(whichlistitem(sColorTheme,CTabList())==-1)
+			DoAlert/T="Bad Inputs for sColorTheme",0,sColorTheme+" is a unknown color theme"
+			Return 0
+		endif
+	endif
+	
+	//Size data : sSDim,sLibraryS,sSData,sSScale,sSMin,sSMax
+	if(whichListItem(sSDim,"Library;Scalar;Vector;; ;")==-1)
+		DoAlert/T="Bad Inputs for sSDim",0,"only Library, Scalar, or Vector are known dimensions"
+		Return 0
+	endif
+	if(!(stringmatch(sSDim," ")||stringmatch(sSDim,"")))
+		if(whichListItem(sLibraryS,sAllLibraries)==-1)
+			DoAlert/T="Bad Inputs for sLibraryS",0,sLibraryC+" isn't a known library in the "+sProject+" project."
+			Return 0
+		endif
+		sdatatypelist = Combi_TableList(sProject,-3,sLibraryS,"DataTypes")
+		if(whichListItem(sSData,sdatatypelist)<1)
+			DoAlert/T="Bad Inputs for sSData",0,sSData+" isn't a known datatype in the "+sProject+" project for library "+sLibraryS+"."
+			Return 0
+		endif
+		if(whichListItem(sSScale,"Linear;-Linear")==-1)
+			DoAlert/T="Bad Inputs for sSScale",0,"Linear,-Linear are the only known scale types for the horizontal axis; "+sSScale+" is not known."
+			Return 0
+		endif
+		if(numtype(str2num(sSMin))!=0)
+			if(whichListItem(sSMin,"*;Auto")==-1)
+				DoAlert/T="Bad Inputs for sSMin",0,"Auto,*, or a number are needed for the horizontal min; "+sSMin+" is not a min value."
+				Return 0
+			endif
+		endif
+		if(numtype(str2num(sSMax))!=0)
+			if(whichListItem(sSMax,"*;Auto")==-1)
+				DoAlert/T="Bad Inputs for sSMax",0,"Auto,*, or a number are needed for the horizontal min; "+sSMax+" is not a min value."
+				Return 0
+			endif
+		endif
+	endif
+	
+	//sSampleMin,sSampleMax,sGA1Min,sGA1Max,sGA2Min,sGA2Max
+	int vTotalSamples = Combi_GetGlobalNumber("vTotalSamples",sProject)
+	if(str2num(sSampleMin)<1)
+		DoAlert/T="Bad Inputs for sSampleMin",0,"Sample range must be 1 and "+num2str(vTotalSamples)+". You put in "+sSampleMin+" for min. Too low!"
+		Return 0
+	endif
+	if(str2num(sSampleMin)>vTotalSamples)
+		DoAlert/T="Bad Inputs for sSampleMin",0,"Sample range must be 1 and "+num2str(vTotalSamples)+". You put in "+sSampleMax+" for max. Too high!"
+		Return 0
+	endif
+	if(str2num(sSampleMax)>vTotalSamples)
+		DoAlert/T="Bad Inputs for sSampleMax",0,"Sample range must be 1 and "+num2str(vTotalSamples)+". You put in "+sSampleMax+" for max. Too high!"
+		Return 0
+	endif
+	if(str2num(sSampleMin)<1)
+		DoAlert/T="Bad Inputs for sSampleMax",0,"Sample range must be 1 and "+num2str(vTotalSamples)+". You put in "+sSampleMin+" for min. Too low!"
+		Return 0
+	endif
+	string sAllGA1 = COMBI_LibraryQualifiers(sProject,3)+"All"
+	if(whichlistItem(sGA1Min,sAllGA1)==-1)
+		DoAlert/T="Bad Inputs for sGA1Min",0, "Grid Axsi 1 value must be one of the following values: "+sAllGA1
+		Return 0
+	endif
+	if(whichlistItem(sGA1Max,sAllGA1)==-1)
+		DoAlert/T="Bad Inputs for sGA1Max",0, "Grid Axsi 1 value must be one of the following values: "+sAllGA1
+		Return 0
+	endif
+	
+	string sAllGA2 = COMBI_LibraryQualifiers(sProject,4)+"All"
+	if(whichlistItem(sGA2Min,sAllGA2)==-1)
+		DoAlert/T="Bad Inputs for sGA2Min",0,"Grid Axsi 2 value must be one of the following values: "+sAllGA2
+		Return 0
+	endif
+	if(whichlistItem(sGA2Max,sAllGA2)==-1)
+		DoAlert/T="Bad Inputs for sGA2Max",0,"Grid Axsi 2 value must be one of the following values: "+sAllGA2
+		Return 0
+	endif
+	
+	//All good!
+	Return 1
 end
+
+functionInfo(
 
 function COMBIDisplay_Plot(sProject,sAction,sHDim,sLibraryH,sHData,sHError,sHScale,sHMin,sHMax,sHLocation,sVDim,sLibraryV,sVData,sVError,sVScale,sVMin,sVMax,sVLocation,sCDim,sLibraryC,sCData,sCScale,sCMin,sCMax,sColorTheme,sSDim,sLibraryS,sSData,sSScale,sSMin,sSMax,vMode,vMarker,sSampleMin,sSampleMax,sGA1Min,sGA1Max,sGA2Min,sGA2Max)
 	string sProject,sAction,sHDim,sLibraryH,sHData,sHError,sHScale,sHMin,sHMax,sHLocation,sVDim,sLibraryV,sVData,sVError,sVScale,sVMin,sVMax,sVLocation,sCDim,sLibraryC,sCData,sCScale,sCMin,sCMax,sColorTheme,sSDim,sLibraryS,sSData,sSScale,sSMin,sSMax,sSampleMin,sSampleMax,sGA1Min,sGA1Max,sGA2Min,sGA2Max
 	variable vMode,vMarker
-	COMBIDisplay_CheckPlotInputs(sProject,sAction,sHDim,sLibraryH,sHData,sHError,sHScale,sHMin,sHMax,sHLocation,sVDim,sLibraryV,sVData,sVError,sVScale,sVMin,sVMax,sVLocation,sCDim,sLibraryC,sCData,sCScale,sCMin,sCMax,sColorTheme,sSDim,sLibraryS,sSData,sSScale,sSMin,sSMax,vMode,vMarker,sSampleMin,sSampleMax,sGA1Min,sGA1Max,sGA2Min,sGA2Max)
+	int bgoodinputs = COMBIDisplay_CheckPlotInputs(sProject,sAction,sHDim,sLibraryH,sHData,sHError,sHScale,sHMin,sHMax,sHLocation,sVDim,sLibraryV,sVData,sVError,sVScale,sVMin,sVMax,sVLocation,sCDim,sLibraryC,sCData,sCScale,sCMin,sCMax,sColorTheme,sSDim,sLibraryS,sSData,sSScale,sSMin,sSMax,vMode,vMarker,sSampleMin,sSampleMax,sGA1Min,sGA1Max,sGA2Min,sGA2Max)
+	if(bgoodinputs == 0)
+		return -1
+	endif
 	variable vTotalSamples = COMBI_GetGlobalNumber("vTotalSamples",sProject)
 	//get users current folder to return to
 	string sTheCurrentUserFolder = GetDataFolder(1) 
@@ -1613,25 +1830,25 @@ function COMBIDisplay_Plot(sProject,sAction,sHDim,sLibraryH,sHData,sHError,sHSca
 		vVMin = str2num(sVMin)
 	endif
 	variable vCMax
-	if(stringmatch(sCMax,"Auto")&&iCDim!=0)
+	if(stringmatch(sCMax,"Auto")&&iCDim>=0)
 		vCMax = COMBI_Extremes(sProject,iCDim,sCData,sLibraryC,num2str(vSampleMin)+";"+num2str(vSampleMax)+";"+num2str(vGA1Min)+";"+num2str(vGA1Max)+";"+num2str(vGA2Min )+";"+num2str(vGA2Max),"Max")
 	else
 		vCMax = str2num(sCMax)
 	endif
 	variable vCMin
-	if(stringmatch(sCMin,"Auto")&&iCDim!=0)
+	if(stringmatch(sCMin,"Auto")&&iCDim>=0)
 		vCMin = COMBI_Extremes(sProject,iCDim,sCData,sLibraryC,num2str(vSampleMin)+";"+num2str(vSampleMax)+";"+num2str(vGA1Min)+";"+num2str(vGA1Max)+";"+num2str(vGA2Min )+";"+num2str(vGA2Max),"Min")
 	else
 		vCMin = str2num(sCMin)
 	endif
 	variable vSMax
-	if(stringmatch(sSMax,"Auto")&&iSDim!=0)
+	if(stringmatch(sSMax,"Auto")&&iSDim>=0)
 		vSMax = COMBI_Extremes(sProject,iSDim,sSData,sLibraryS,num2str(vSampleMin)+";"+num2str(vSampleMax)+";"+num2str(vGA1Min)+";"+num2str(vGA1Max)+";"+num2str(vGA2Min )+";"+num2str(vGA2Max),"Max")
 	else
 		vSMax = str2num(sSMax)
 	endif
 	variable vSMin
-	if(stringmatch(sSMin,"Auto")&&iSDim!=0)
+	if(stringmatch(sSMin,"Auto")&&iSDim>=0)
 		vSMin = COMBI_Extremes(sProject,iSDim,sSData,sLibraryS,num2str(vSampleMin)+";"+num2str(vSampleMax)+";"+num2str(vGA1Min)+";"+num2str(vGA1Max)+";"+num2str(vGA2Min )+";"+num2str(vGA2Max),"Min")
 	else
 		vSMin = str2num(sSMin)
@@ -2017,7 +2234,7 @@ function COMBIDisplay_Plot(sProject,sAction,sHDim,sLibraryH,sHData,sHError,sHSca
 			endif
 		endif
 	endif
-	if(iCDim>0)
+	if(iCDim>=0)
 		ModifyGraph margin(right)=100
 		if(stringmatch(sCScale,"Linear"))
 			ColorScale/Z=0/C/N=zScaleLeg/F=0/A=MC ctab={vCMin,vCMax,$sColorTheme,0}
@@ -2045,7 +2262,7 @@ function COMBIDisplay_Plot(sProject,sAction,sHDim,sLibraryH,sHData,sHError,sHSca
 		ColorScale/C/N=zScaleLeg COMBIDisplay_GetAxisLabel(sCData)
 	
 	endif
-	if(iSDim>0&&bNewVAxes==1)
+	if(iSDim>=0&&bNewVAxes==1)
 		string sDrawNum1, sDrawNum2, sDrawNum3, sDrawNum4, sDrawNum5
 		variable vSMinS,vSMaxS
 		if(stringmatch(sSScale,"Linear"))
@@ -2638,14 +2855,11 @@ function/S COMBI_GetUniqueColor(vColor,vColors,[sColorTheme])
 	if(paramIsDefault(sColorTheme))
 		sColorTheme = "dBZ14"
 	endif 
-	if(vColor>vColors)
-		return "(0,0,0)"
-	endif
 	ColorTab2Wave $sColorTheme
-	wave wColorWave = root:M_colors
+	wave wColorWave = M_colors
 	deletePoints 6,1,wColorWave//delete yellow
 	int vTotalColorsAvailable = dimsize(wColorWave,0)
-	if(vColors>vTotalColorsAvailable)
+	if(vColor>vTotalColorsAvailable)
 		do
 			vColor-=vTotalColorsAvailable
 			vColors-=vTotalColorsAvailable
@@ -3079,6 +3293,12 @@ function/S COMBIDisplay_GetAxisLabel(sDataType)
 	if(stringmatch(sLabel,"NAG")||stringmatch(sLabel,""))
 		sLabel = sDataType
 	endif
+	if(stringmatch(sDataType,sLabel))
+		if(strsearch(sDataType, ":", 0)>=0)
+			int iLastColon = strsearch(sDataType,":",inf,1)
+			sLabel = sDataType[(iLastColon+1),(strlen(sDataType)-1)]
+		endif
+	endif	
 	return sLabel
 end
 
@@ -3093,6 +3313,7 @@ end
 function/S Combi_NewPlot(sWindowName)
 	string sWindowName //name for new window 
 	string sFontOption = Combi_GetGlobalString("sFontOption","COMBIgor")
+	string sWindowTitle = sWindowName
 	sWindowName = cleanupName(sWindowName,0)
 	if(strlen(sWindowName)>25)
 		sWindowName = ReplaceString("_",sWindowName,"")
@@ -3126,7 +3347,7 @@ function/S Combi_NewPlot(sWindowName)
 	else
 		sTheRightName = sWindowName
 	endif
-	display/K=(Combi_GetGlobalNumber("vKillOption","COMBIgor"))/N=$sTheRightName
+	display/K=(Combi_GetGlobalNumber("vKillOption","COMBIgor"))/N=$sTheRightName as sWindowTitle
 	ModifyGraph gFont=sFontOption
 	ModifyGraph width=400,height=200,gfSize=12
 	ModifyGraph width=0,height=0
@@ -3152,3 +3373,4 @@ function/S Combi_NewGizmo(sWindowName)
 	NewGizmo/K=(Combi_GetGlobalNumber("vKillOption","COMBIgor"))/N=$sTheRightName
 	return S_name
 end
+

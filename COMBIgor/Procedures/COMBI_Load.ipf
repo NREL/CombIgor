@@ -578,6 +578,9 @@ function/S COMBI_UserOptionSelect(sOptions,sStartOptions, [sTitle,sDescription])
 	string sTitle
 	string sDescription
 	
+	string sTheCurrentUserFolder = GetDataFolder(1) 
+	setdatafolder root:
+	
 	//clear any blank options
 	sOptions = RemoveFromList("; ",sOptions)
 	int iOption
@@ -673,6 +676,7 @@ function/S COMBI_UserOptionSelect(sOptions,sStartOptions, [sTitle,sDescription])
 	
 	
 	Killwaves wOptionWave
+	setdatafolder $sTheCurrentUserFolder
 	return sSelections2Return
 end
 
@@ -1445,11 +1449,9 @@ function COMBI_ProgressWindow(sName,sDescription,sTitle,vPart,vTotal)
 	
 	if(vPart==1)//create
 		NewPanel/N=$sName/W=(vWinLeft,vWinTop,vWinRight,vWinBottom) as sTitle
-		SetDrawLayer UserBack
-		SetDrawEnv fsize= 14
-		SetDrawEnv textxjust= 1,textyjust= 1
-		SetDrawEnv save
-		DrawText 100,20,sDescription
+		SetDrawLayer/W=$sName UserBack
+		SetDrawEnv/W=$sName fsize= 14,textxjust= 1,textyjust= 1,save
+		DrawText/W=$sName 100,20,sDescription
 		ValDisplay COMBIProgressValue pos={10,30},size={180,40},frame=4,appearance={native}
 		ValDisplay COMBIProgressValue limits={0,vTotal,0},barmisc={0,1},bodyWidth= 180
 		Execute "ValDisplay COMBIProgressValue value=_NUM:"+num2str(1)
@@ -1457,7 +1459,7 @@ function COMBI_ProgressWindow(sName,sDescription,sTitle,vPart,vTotal)
 	elseif(vPart==vTotal)//kill
 		Killwindow/Z $sName
 	elseif(vPart<vTotal)//update
-		Execute "ValDisplay COMBIProgressValue value=_NUM:"+num2str(vPart)
+		Execute "ValDisplay COMBIProgressValue value=_NUM:"+num2str(vPart)+",win="+sName
 		DoUpdate/Z/W=$sName
 	else //kill
 		Killwindow/Z $sName
